@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="h5-server" xmlns:artifact="antlib:org.apache.maven.artifact.ant"
+	default="restart">
+	<artifact:dependencies pathId="project.lib"
+		filesetId="project.lib.fileset" type="jar">
+		<pom file="pom.xml" />
+	</artifact:dependencies>
+
+	<property name="gamedir" value="/data/www/h5/socket/" />
+	<property name="startcmd" value="/etc/init.d/socket_h5 start" />
+	<property name="stopcmd" value="/etc/init.d/socket_h5 stop" />
+	<property name="host" value="192.168.21.110" />
+	<property name="user" value="www" />
+	<property name="password" value="huoji123" />
+
+
+	<target name="copy-lib" description="copy lib jars to web lib dir">
+		<delete dir="target/lib" />
+		<mkdir dir="target/lib" />
+		<copy todir="target/lib" flatten="true">
+			<fileset refid="project.lib.fileset" />
+		</copy>
+	</target>
+	<target name="deploy-lib" depends="copy-lib"
+		description="deploy resource to test server">
+		<!-- <sshexec trust="true" host="${host}" username="${user}"
+			password="${password}" command="rm -f ${gamedir}lib/*" />-->
+		<scp trust="true" todir="${user}:${password}@${host}:${gamedir}lib/">
+			<fileset dir="target/lib" />
+		</scp>
+		<sshexec trust="true" host="${host}" username="${user}"
+			password="${password}" command="chown -R www:www ${gamedir}lib" />
+		<delete dir="target/lib" />
+	</target>
+
+	<target name="copy-conf">
+		<delete dir="target/conf" />
+		<mkdir dir="target/conf" />
+		<copy todir="target/conf">
+			 <fileset dir="src/main/resources">
+			<!--	<exclude name="log4j.xml" />
+				<exclude name="game.xml" />
+				<exclude name="jade.cfg" />
+				<exclude name="*.txt" />-->
+			</fileset> 
+		</copy>
+	</target>
+
+
+
+	<target name="deploy-conf" depends="copy-conf"
+		description="deploy resource to test server">
+		<scp trust="true" todir="${user}:${password}@${host}:${gamedir}conf/">
+			 <fileset dir="target/conf">
+				<!--<exclude name="log4j.xml" />
+				<exclude name="game.xml" />
+				<exclude name="jade.cfg" />
+				<exclude name="*.txt" /> -->
+			</fileset>
+		</scp>
+		<sshexec trust="true" host="${host}" username="${user}"
+			password="${password}" command="chown -R www:www ${gamedir}conf" />
+		<delete dir="target/conf" />
+	</target>
+	
+	<target name="compile" description="compile src">
+		<delete dir="target/src-classes" />
+		<mkdir dir="target/src-classes" />
+		<javac srcdir="src" destdir="target/src-classes" source="1.7"
+			encoding="UTF-8" includeAntRuntime="false" failonerror="true" debug="on"
+			excludes="test/**">
+			<classpath refid="project.lib" />
+		</javac>
+	</target>
+	
+	<target name="jar" description="jar">
+		<delete file="target/hotswap.jar" />
+		<jar destfile="target/hotswap.jar" basedir="target/classes">
+			<manifest>
+				<attribute name="Built-By" value="lf" />
+				<attribute name="Rose" value="DAO" />
+				<attribute name="Main-Class" value="fixed.classtestFixBug"/>
+	            <attribute name="Class-Path" value="tools.jar"/>
+				<attribute name="Agent-Class" value="fixed.debugJar"/>
+				<attribute name="Can-Redefine-Classes" value="true"/>
+			</manifest>
+		</jar>
+		<delete dir="target/src-classes" />
+	</target>
+	
+	<target name="deploy-jar" depends="jar" description="deploy jar to test server">
+		<scp trust="true" file="target/game.jar"
+			todir="${user}:${password}@${host}:${gamedir}lib/" />
+		<!-- <sshexec trust="true" host="${host}" username="${user}"
+			password="${password}" command="chown -R www:www ${gamedir}lib" /> -->
+		<delete dir="target/lib" />
+		<delete file="target/game.jar" />
+	</target>
+	
+	<target name="only-restart">
+		<sshexec trust="true" host="${host}" username="${user}" password="${password}" command="${stopcmd}" />
+		<sleep seconds="5" />
+		<sshexec trust="true" host="${host}" username="${user}" password="${password}" command="${startcmd}" />
+	</target>
+
+	<target name="restart" depends="deploy-jar,only-restart" description="restart">
+	</target>
+	
+	<target name="protoc" description="general protoc class">
+		<exec executable="protoc.exe">
+			<arg line="-I=proto/ --java_out=src/main/java proto/*.proto" />
+		</exec>
+	</target>
+</project>
