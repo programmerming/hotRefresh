@@ -1,0 +1,2 @@
+1、Agent-Class：fixed.debugJar（指定了代理类的包名类名，不然会产生Agent JAR not found or no Agent-Class attribute报错）
+2、Can-Redefine-Classes：true（使得这个包可以对已载入的class进行redefine）
